@@ -172,7 +172,8 @@ Include questions that require thinking skills like: comparing and contrasting, 
             console.error('❌ No questions parsed from response');
             return res.status(500).json({ 
                 error: 'Failed to parse questions',
-                details: 'Could not extract valid questions from AI response'
+                details: 'Could not extract valid questions from AI response',
+                rawContentPreview: rawContent ? rawContent.substring(0, 500) : 'No content available'
             });
         }
         
