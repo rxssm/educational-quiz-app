@@ -1,4 +1,4 @@
-const axios = require('axios');
+// Using built-in fetch instead of axios (Node 18+ has native fetch)
 
 // Simple in-memory rate limiting (resets on cold starts)
 const rateLimitMap = new Map();
@@ -66,9 +66,13 @@ export default async function handler(req, res) {
 
         console.log('📡 Making request to DeepSeek API...');
         
-        const response = await axios.post(
-            'https://api.deepseek.com/v1/chat/completions',
-            {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
                     { role: 'system', content: "You are a helpful assistant that generates quiz questions." },
@@ -131,27 +135,22 @@ Make sure questions are:
 Include questions that require thinking skills like: comparing and contrasting, cause and effect, problem-solving, making connections between ideas, and applying knowledge to new situations.`,
                     },
                 ],
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${API_KEY}`,
-                },
-                timeout: 50000 // 50 seconds (Vercel has 60s limit)
-            }
-        );
+            })
+        });
 
         console.log('✅ Received response from DeepSeek API');
+        console.log('📊 Response status:', response.status);
 
-        if (!response.data || !response.data.choices || !response.data.choices[0]) {
-            console.error('❌ Invalid API response structure:', response.data);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error:', response.status, errorText);
             return res.status(500).json({ 
-                error: 'Invalid response from AI service',
-                details: 'The AI service returned an unexpected response format'
+                error: 'API request failed',
+                details: `Status: ${response.status}, ${errorText}`
             });
         }
 
-        const rawContent = response.data.choices[0].message?.content;
+        const data = await response.json();
         if (!rawContent) {
             console.error('❌ No content in API response');
             return res.status(500).json({ 
@@ -200,19 +199,18 @@ Include questions that require thinking skills like: comparing and contrasting, 
         console.error('Error type:', error.constructor.name);
         console.error('Error message:', error.message);
         
-        if (error.response) {
-            console.error('API Error Status:', error.response.status);
-            console.error('API Error Data:', error.response.data);
+        if (error.status) {
+            console.error('API Error Status:', error.status);
         }
         
-        if (error.code === 'ECONNABORTED') {
+        if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED') {
             return res.status(504).json({ 
                 error: 'Request timeout - please try again',
                 details: 'The AI service took too long to respond'
             });
         }
         
-        if (error.response?.status === 401) {
+        if (error.status === 401) {
             return res.status(500).json({ 
                 error: 'API authentication failed',
                 details: 'Please check API key configuration'
