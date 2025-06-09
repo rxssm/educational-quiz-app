@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.DEEPSEEK_API_KEY;
 if (!API_KEY) {
     console.error('❌ SECURITY ERROR: DEEPSEEK_API_KEY environment variable is not set!');
-    console.error('Please set your API key in the environment variables before starting the server.');
-    process.exit(1);
+    console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('DEEP')));
+    // Don't exit in production, let it fail gracefully
 }
 
 // Rate limiting to prevent abuse
@@ -23,6 +23,7 @@ const questionRateLimit = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: () => !API_KEY, // Skip rate limiting if API key is missing (will fail anyway)
     handler: (req, res) => {
         console.log(`⚠️  Rate limit exceeded for IP: ${req.ip}`);
         res.status(429).json({
@@ -62,12 +63,34 @@ app.use((req, res, next) => {
     next();
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        hasApiKey: !!API_KEY,
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
 // API endpoint for generating questions with specific rate limiting
 app.get('/api/questions', questionRateLimit, async (req, res) => {
     const startTime = Date.now();
     
     try {
         console.log(`🎓 Generating new educational quiz for IP: ${req.ip}`);
+        
+        // Check API key first
+        if (!API_KEY) {
+            console.error('❌ No API key available');
+            return res.status(500).json({ 
+                error: 'Server configuration error',
+                details: 'API key not configured properly'
+            });
+        }
+
+        console.log('📡 Making request to DeepSeek API...');
         
         const response = await axios.post(
             'https://api.deepseek.com/v1/chat/completions',
@@ -140,11 +163,34 @@ Include questions that require thinking skills like: comparing and contrasting, 
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${API_KEY}`,
                 },
-                timeout: 60000 // 60 second timeout
+                timeout: 120000 // Increased to 2 minutes for Vercel
             }
         );
 
-        const rawContent = response.data.choices[0].message.content;
+        console.log('✅ Received response from DeepSeek API');
+        console.log('📊 Response status:', response.status);
+        console.log('📊 Response data keys:', Object.keys(response.data || {}));
+
+        if (!response.data || !response.data.choices || !response.data.choices[0]) {
+            console.error('❌ Invalid API response structure:', response.data);
+            return res.status(500).json({ 
+                error: 'Invalid response from AI service',
+                details: 'The AI service returned an unexpected response format'
+            });
+        }
+
+        const rawContent = response.data.choices[0].message?.content;
+        if (!rawContent) {
+            console.error('❌ No content in API response');
+            return res.status(500).json({ 
+                error: 'Empty response from AI service',
+                details: 'The AI service did not return any content'
+            });
+        }
+
+        console.log('📝 Raw content length:', rawContent.length);
+        console.log('📝 Raw content preview:', rawContent.substring(0, 200) + '...');
+        
         const questions = parseQuestions(rawContent);
         
         const endTime = Date.now();
@@ -153,17 +199,43 @@ Include questions that require thinking skills like: comparing and contrasting, 
         console.log(`✅ Successfully generated ${questions.length} questions in ${duration}s for IP: ${req.ip}`);
         
         if (!questions || questions.length === 0) {
+            console.error('❌ No questions parsed from response');
             return res.status(500).json({ 
-                error: 'No questions could be parsed from AI response'
+                error: 'Failed to parse questions',
+                details: 'Could not extract valid questions from AI response',
+                rawContentPreview: rawContent.substring(0, 500)
             });
         }
         
-        res.json(questions);
+        // Validate questions before sending
+        const validQuestions = questions.filter(q => 
+            q.content && q.choices && q.choices.length >= 5 && q.correctAnswer
+        );
+        
+        if (validQuestions.length === 0) {
+            console.error('❌ No valid questions after filtering');
+            return res.status(500).json({ 
+                error: 'No valid questions generated',
+                details: 'All generated questions were incomplete or invalid'
+            });
+        }
+        
+        console.log(`📋 Sending ${validQuestions.length} valid questions`);
+        res.json(validQuestions);
+        
     } catch (error) {
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         
-        console.error(`❌ Error generating questions after ${duration}s for IP: ${req.ip}:`, error.response?.data || error.message);
+        console.error(`❌ Error generating questions after ${duration}s for IP: ${req.ip}:`);
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        
+        if (error.response) {
+            console.error('API Error Status:', error.response.status);
+            console.error('API Error Data:', error.response.data);
+        }
         
         if (error.code === 'ECONNABORTED') {
             return res.status(504).json({ 
@@ -172,96 +244,121 @@ Include questions that require thinking skills like: comparing and contrasting, 
             });
         }
         
+        if (error.response?.status === 401) {
+            return res.status(500).json({ 
+                error: 'API authentication failed',
+                details: 'Please check API key configuration'
+            });
+        }
+        
         res.status(500).json({ 
             error: 'Failed to generate questions', 
-            details: 'Please try again in a moment'
+            details: error.message || 'Unknown error occurred',
+            errorType: error.constructor.name
         });
     }
 });
 
 function parseQuestions(content) {
-    const questions = [];
-    const blocks = content.split('---').filter(block => block.trim().length > 0);
-    
-    for (let block of blocks) {
-        if (!block.includes('**Question')) continue;
+    try {
+        console.log('🔧 Starting question parsing...');
+        const questions = [];
+        const blocks = content.split('---').filter(block => block.trim().length > 0);
         
-        const lines = block.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        console.log(`📊 Found ${blocks.length} blocks to parse`);
         
-        let question = {
-            content: '',
-            choices: [],
-            correctAnswer: null,
-            explanation: null,
-            funFact: null
-        };
-        
-        let currentSection = null;
-        
-        for (let line of lines) {
-            // Question title line: **Question X:** (Subject: Topic) Question text
-            if (line.startsWith('**Question') && line.includes(':**')) {
-                // Extract everything after the colon, including subject label
-                const contentMatch = line.match(/^\*\*Question\s+\d+:\*\*\s*(.+)$/);
-                if (contentMatch) {
-                    question.content = contentMatch[1].trim();
+        for (let i = 0; i < blocks.length; i++) {
+            const block = blocks[i];
+            if (!block.includes('**Question')) {
+                console.log(`⏭️  Skipping block ${i} (no question marker)`);
+                continue;
+            }
+            
+            console.log(`🔍 Parsing block ${i + 1}...`);
+            
+            const lines = block.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            
+            let question = {
+                content: '',
+                choices: [],
+                correctAnswer: null,
+                explanation: null,
+                funFact: null
+            };
+            
+            let currentSection = null;
+            
+            for (let line of lines) {
+                // Question title line: **Question X:** (Subject: Topic) Question text
+                if (line.startsWith('**Question') && line.includes(':**')) {
+                    // Extract everything after the colon, including subject label
+                    const contentMatch = line.match(/^\*\*Question\s+\d+:\*\*\s*(.+)$/);
+                    if (contentMatch) {
+                        question.content = contentMatch[1].trim();
+                        console.log(`  ✅ Found question: ${question.content.substring(0, 50)}...`);
+                    }
+                    currentSection = 'question';
                 }
-                currentSection = 'question';
-            }
-            
-            // Choice lines: a) Choice text
-            else if (/^[a-e]\)\s/.test(line)) {
-                const choice = line.replace(/^[a-e]\)\s*/, '');
-                question.choices.push(choice);
-                currentSection = 'choices';
-            }
-            
-            // Correct Answer line: **Correct Answer:** letter
-            else if (line.startsWith('**Correct Answer:**')) {
-                const answerMatch = line.match(/\*\*Correct Answer:\*\*\s*([a-e])/);
-                if (answerMatch) {
-                    question.correctAnswer = answerMatch[1].toLowerCase();
+                
+                // Choice lines: a) Choice text
+                else if (/^[a-e]\)\s/.test(line)) {
+                    const choice = line.replace(/^[a-e]\)\s*/, '');
+                    question.choices.push(choice);
+                    console.log(`  ✅ Added choice: ${choice.substring(0, 30)}...`);
+                    currentSection = 'choices';
                 }
-                currentSection = 'answer';
-            }
-            
-            // Explanation line: **Explanation:** text
-            else if (line.startsWith('**Explanation:**')) {
-                question.explanation = line.replace(/^\*\*Explanation:\*\*\s*/, '');
-                currentSection = 'explanation';
-            }
-            
-            // Fun Fact line: **Fun Fact:** text
-            else if (line.startsWith('**Fun Fact:**')) {
-                question.funFact = line.replace(/^\*\*Fun Fact:\*\*\s*/, '');
-                currentSection = 'funfact';
-            }
-            
-            // Continue previous section if it's a continuation line
-            else if (line.length > 0 && currentSection) {
-                if (currentSection === 'question' && question.content) {
-                    question.content += ' ' + line;
-                } else if (currentSection === 'explanation' && question.explanation) {
-                    question.explanation += ' ' + line;
-                } else if (currentSection === 'funfact' && question.funFact) {
-                    question.funFact += ' ' + line;
+                
+                // Correct Answer line: **Correct Answer:** letter
+                else if (line.startsWith('**Correct Answer:**')) {
+                    const answerMatch = line.match(/\*\*Correct Answer:\*\*\s*([a-e])/);
+                    if (answerMatch) {
+                        question.correctAnswer = answerMatch[1].toLowerCase();
+                        console.log(`  ✅ Correct answer: ${question.correctAnswer}`);
+                    }
+                    currentSection = 'answer';
                 }
+                
+                // Explanation line: **Explanation:** text
+                else if (line.startsWith('**Explanation:**')) {
+                    question.explanation = line.replace(/^\*\*Explanation:\*\*\s*/, '');
+                    currentSection = 'explanation';
+                }
+                
+                // Fun Fact line: **Fun Fact:** text
+                else if (line.startsWith('**Fun Fact:**')) {
+                    question.funFact = line.replace(/^\*\*Fun Fact:\*\*\s*/, '');
+                    currentSection = 'funfact';
+                }
+                
+                // Continue previous section if it's a continuation line
+                else if (line.length > 0 && currentSection) {
+                    if (currentSection === 'question' && question.content) {
+                        question.content += ' ' + line;
+                    } else if (currentSection === 'explanation' && question.explanation) {
+                        question.explanation += ' ' + line;
+                    } else if (currentSection === 'funfact' && question.funFact) {
+                        question.funFact += ' ' + line;
+                    }
+                }
+            }
+            
+            // Validate and add question
+            if (question.content && question.choices.length >= 5 && question.correctAnswer) {
+                questions.push(question);
+                console.log(`  ✅ Added complete question ${questions.length}`);
+            } else {
+                console.log(`  ❌ Skipped incomplete question (content: ${!!question.content}, choices: ${question.choices.length}, answer: ${!!question.correctAnswer})`);
             }
         }
         
-        // Validate and add question
-        if (question.content && question.choices.length >= 5 && question.correctAnswer) {
-            questions.push(question);
-        }
+        console.log(`🎯 Parsing complete: ${questions.length} valid questions`);
+        return questions;
+        
+    } catch (parseError) {
+        console.error('❌ Error in parseQuestions:', parseError);
+        return [];
     }
-    
-    return questions;
 }
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
 
 // 404 handler
 app.use((req, res) => {
@@ -270,11 +367,12 @@ app.use((req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-    console.log(`🎓 Secure Educational Quiz Server running on http://localhost:${PORT}`);
+    console.log(`🎓 Secure Educational Quiz Server running on port ${PORT}`);
     console.log(`🔒 Security features enabled:`);
-    console.log(`   ✅ API key protection`);
+    console.log(`   ✅ API key protection: ${!!API_KEY}`);
     console.log(`   ✅ Rate limiting (10 quizzes per 5 minutes per IP)`);
     console.log(`   ✅ Security headers`);
     console.log(`   ✅ Request logging`);
+    console.log(`   ✅ Enhanced error handling`);
     console.log(`Ready to generate awesome 4th grade questions safely!`);
 });
