@@ -81,19 +81,34 @@ export default async function handler(req, res) {
                         role: 'user',
                         content: `Generate exactly 10 educational questions for a 4th grade student (9 years old) covering multiple subjects. Include questions from at least 6 of these subjects: **science, math, social studies, geography, history, literature/reading, health/safety, arts, nature/environment, and basic life skills**.
 
-IMPORTANT: Create completely NEW and DIFFERENT questions each time. Vary the topics, difficulty levels, and question types. Use this random element: ${Math.random().toString(36).substring(7)} to ensure uniqueness.
+CRITICAL: This request has unique ID: ${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)} and timestamp: ${new Date().toISOString()}. Create COMPLETELY NEW and UNIQUE questions that have NEVER been generated before. Each question must be totally different from any previous quiz.
 
-Here are some topic ideas to choose from (pick different ones each time):
-- Math: fractions, geometry, word problems, measurement, time, money
-- Science: animals, plants, weather, space, human body, simple machines, states of matter
-- Geography: continents, countries, capitals, landmarks, maps, climate
-- History: important figures, events, inventions, cultures, timelines
-- Social Studies: government, citizenship, community helpers, holidays, traditions
-- Literature: story elements, authors, characters, reading comprehension
-- Health/Safety: nutrition, exercise, first aid, hygiene, safety rules
-- Arts: famous artists, music, colors, creativity, cultural arts
-- Nature: ecosystems, conservation, seasons, natural disasters
-- Life Skills: money management, time management, problem-solving, communication
+VARIATION REQUIREMENTS:
+- Use different question formats: multiple choice, scenario-based, "what if" questions, comparison questions
+- Vary difficulty within 4th grade level (some easier, some more challenging)
+- Mix factual recall with critical thinking and application questions
+- Use different contexts and real-world examples each time
+- Include questions that require students to analyze, compare, predict, or solve problems
+
+TOPIC ROTATION (pick 6-8 different subjects each time):
+- **Math**: ${['basic fractions and decimals', 'geometry shapes and angles', 'word problems with money', 'measurement and units', 'time and elapsed time', 'multiplication and division', 'area and perimeter', 'patterns and sequences'][Math.floor(Math.random() * 8)]}
+- **Science**: ${['animal adaptations', 'plant life cycles', 'weather patterns', 'solar system', 'states of matter', 'simple machines', 'ecosystems', 'human body systems'][Math.floor(Math.random() * 8)]}
+- **Geography**: ${['US states and capitals', 'world continents', 'landforms and bodies of water', 'maps and directions', 'climate zones', 'natural resources', 'famous landmarks', 'cultural regions'][Math.floor(Math.random() * 8)]}
+- **History**: ${['American Revolution', 'Native American cultures', 'explorers and discoveries', 'colonial life', 'inventors and inventions', 'Civil War era', 'westward expansion', 'early settlements'][Math.floor(Math.random() * 8)]}
+- **Social Studies**: ${['government and citizenship', 'community helpers', 'economics and money', 'cultures and traditions', 'rights and responsibilities', 'democracy and voting', 'laws and rules', 'diversity and inclusion'][Math.floor(Math.random() * 8)]}
+- **Literature**: ${['story elements and plot', 'character development', 'poetry and rhyme', 'authors and illustrators', 'genres and types', 'reading comprehension', 'main idea and details', 'cause and effect'][Math.floor(Math.random() * 8)]}
+- **Health/Safety**: ${['nutrition and food groups', 'exercise and fitness', 'personal hygiene', 'safety rules', 'first aid basics', 'mental health', 'sleep and rest', 'preventing illness'][Math.floor(Math.random() * 8)]}
+- **Arts**: ${['famous artists and paintings', 'music and instruments', 'theater and drama', 'art techniques', 'cultural arts', 'creativity and expression', 'color theory', 'art history'][Math.floor(Math.random() * 8)]}
+- **Nature**: ${['conservation and recycling', 'endangered species', 'natural disasters', 'seasons and changes', 'life cycles', 'food chains', 'habitats', 'environmental protection'][Math.floor(Math.random() * 8)]}
+- **Life Skills**: ${['time management', 'problem solving', 'communication', 'teamwork', 'goal setting', 'decision making', 'organization', 'responsibility'][Math.floor(Math.random() * 8)]}
+
+QUESTION VARIETY EXAMPLES (use different ones each time):
+- Scenario: "If you were planning a garden..."
+- Comparison: "Which is larger/smaller/faster..."
+- Application: "How would you use this knowledge to..."
+- Analysis: "What would happen if..."
+- Real-world: "In your daily life, when might you..."
+- Problem-solving: "A student needs to figure out..."
 
 Format each question exactly like this, with --- separators:
 
@@ -111,19 +126,7 @@ e) [Answer choice E]
 
 ---
 
-**Question 2:** (Subject: Topic) [Question text here]  
-a) [Answer choice A]  
-b) [Answer choice B]  
-c) [Answer choice C]  
-d) [Answer choice D]  
-e) [Answer choice E]  
-**Correct Answer:** [letter]  
-**Explanation:** [Brief, child-friendly explanation of why this is correct]  
-**Fun Fact:** [An interesting related fact to spark curiosity]  
-
-Continue this exact format for all 10 questions, ending each question block with --- and starting the next with ---.
-
-Make sure questions are:
+Continue this exact format for all 10 questions. Make sure questions are:
 - Age-appropriate and engaging for 4th grade students
 - Educational and teach valuable concepts that align with 4th grade curriculum
 - Cover diverse topics to broaden knowledge
@@ -131,9 +134,9 @@ Make sure questions are:
 - Written in clear, simple language children can understand
 - Designed to make learning fun and memorable
 - Focus on practical knowledge that helps children understand their world
-- COMPLETELY DIFFERENT from any previous quiz you may have generated
+- ABSOLUTELY UNIQUE and different from any previous quiz
 
-Include questions that require thinking skills like: comparing and contrasting, cause and effect, problem-solving, making connections between ideas, and applying knowledge to new situations.`,
+Remember: EVERY question must be completely original and never repeated!`,
                     },
                 ],
             })
