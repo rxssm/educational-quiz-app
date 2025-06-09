@@ -152,6 +152,23 @@ Include questions that require thinking skills like: comparing and contrasting, 
         }
 
         const data = await response.json();
+
+        console.log('📊 Full API response structure:', JSON.stringify(data, null, 2));
+
+        if (!data || !data.choices || !data.choices[0]) {
+            console.error('❌ Invalid API response structure:', data);
+            return res.status(500).json({ 
+                error: 'Invalid response from AI service',
+                details: 'The AI service returned an unexpected response format'
+            });
+        }
+
+        console.log('📊 Message object:', JSON.stringify(data.choices[0].message, null, 2));
+        rawContent = data.choices[0].message?.content;
+        
+        console.log('📝 Raw content extracted:', rawContent ? `${rawContent.length} characters` : 'NULL/UNDEFINED');
+        console.log('📝 Raw content preview:', rawContent ? rawContent.substring(0, 200) + '...' : 'NO CONTENT');
+
         if (!rawContent) {
             console.error('❌ No content in API response');
             return res.status(500).json({ 
