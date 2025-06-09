@@ -41,6 +41,7 @@ export default async function handler(req, res) {
     
     const startTime = Date.now();
     const clientIP = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+    let rawContent = null; // Declare here to ensure it's in scope
     
     try {
         console.log(`🎓 Generating new educational quiz for IP: ${clientIP}`);
