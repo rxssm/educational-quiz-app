@@ -2,6 +2,36 @@ let currentQuestions = [];
 let userAnswers = {};
 let quizCompleted = false;
 
+// Loading tips for kids
+let loadingTips = [
+    "Get ready to learn something amazing!",
+    "Did you know? Learning new things grows your brain! 🧠",
+    "Every question is a chance to discover something cool! 🌟",
+    "You're about to become smarter in just a few minutes! 💪",
+    "These questions were made just for 4th graders like you! 🎒",
+    "Learning is like a superpower - you're about to use yours! ⚡",
+    "Fun facts are coming your way! 🎯",
+    "Get your thinking cap on! 🎩"
+];
+let tipIndex = 0;
+
+function cycleTips() {
+    const tipElement = document.getElementById('loading-tip');
+    if (tipElement) {
+        tipElement.style.opacity = '0';
+        setTimeout(() => {
+            tipIndex = (tipIndex + 1) % loadingTips.length;
+            tipElement.textContent = loadingTips[tipIndex];
+            tipElement.style.opacity = '1';
+        }, 500);
+    }
+}
+
+function startTipCycling() {
+    cycleTips(); // Start immediately
+    return setInterval(cycleTips, 3000); // Change every 3 seconds
+}
+
 async function generateQuestions() {
     try {
         // Reset quiz state
@@ -9,9 +39,31 @@ async function generateQuestions() {
         userAnswers = {};
         quizCompleted = false;
         
-        // Show loading message
+        // Show enhanced loading screen
         const questionsContainer = document.getElementById('questions');
-        questionsContainer.innerHTML = '<h2>Loading questions...</h2>';
+        questionsContainer.innerHTML = `
+            <div id="loading" class="loading">
+                <div class="loading-content">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <div class="loading-books">📚✨📖</div>
+                    </div>
+                    <h2>🧠 Preparing Your Quiz! 🎓</h2>
+                    <p class="loading-message">Our AI teacher is creating brand new questions just for you...</p>
+                    <div class="loading-dots">
+                        <span>.</span>
+                        <span>.</span>
+                        <span>.</span>
+                    </div>
+                    <div class="loading-tips">
+                        <p>💡 <span id="loading-tip">Get ready to learn something amazing!</span></p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Start cycling tips
+        const tipInterval = startTipCycling();
         
         // Hide refresh button
         const refreshButton = document.getElementById('refresh-button');
@@ -27,6 +79,7 @@ async function generateQuestions() {
         }
         
         const data = await response.json();
+        console.log('Received questions:', data);
         
         if (!Array.isArray(data)) {
             console.error('Data is not an array:', data);
@@ -39,15 +92,25 @@ async function generateQuestions() {
         }
         
         currentQuestions = data;
+        
+        // Stop cycling tips
+        clearInterval(tipInterval);
+        
         displayQuestions(currentQuestions);
         
     } catch (error) {
         console.error('Error:', error.message);
         const questionsContainer = document.getElementById('questions');
         questionsContainer.innerHTML = `
-            <h2>Error Loading Questions</h2>
-            <p style="color: red;">Failed to load questions: ${error.message}</p>
-            <button onclick="generateQuestions()" style="padding: 10px 20px; margin-top: 10px;">Try Again</button>
+            <div class="loading">
+                <div class="loading-content">
+                    <h2>😅 Oops! Something went wrong</h2>
+                    <p>We're having trouble creating your quiz right now. Please try refreshing the page!</p>
+                    <button onclick="generateQuestions()" style="padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 1rem;">
+                        🔄 Try Again
+                    </button>
+                </div>
+            </div>
         `;
     }
 }

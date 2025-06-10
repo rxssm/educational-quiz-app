@@ -258,13 +258,95 @@
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
         }
         
-        /* Loading and error states */
+        /* Enhanced Loading Styles for Kids */
         .loading {
-            text-align: center;
-            color: #7f8c8d;
-            font-style: italic;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-        
+
+        .loading-content {
+            text-align: center;
+            color: white;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        .spinner-container {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+
+        .loading-books {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        .loading h2 {
+            color: white;
+            margin: 1rem 0;
+            font-size: 1.8rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .loading-message {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            margin: 1rem 0;
+        }
+
+        .loading-dots span {
+            font-size: 2rem;
+            color: white;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: 0s; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.5s; }
+        .loading-dots span:nth-child(3) { animation-delay: 1s; }
+
+        .loading-tips {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-tips p {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Old loading styles for compatibility */
         .loading-container {
             text-align: center;
             padding: 40px 20px;
@@ -282,11 +364,6 @@
             border-radius: 50%;
             margin: 0 auto 20px auto;
             animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
         
         .loading-container h3 {
@@ -316,12 +393,6 @@
             animation: loading 2s ease-in-out infinite;
         }
         
-        @keyframes loading {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
-        }
-        
         .error {
             color: #e74c3c;
             text-align: center;
@@ -329,6 +400,35 @@
             background-color: #fdf2f2;
             border-radius: 8px;
             border: 1px solid #f5c6cb;
+        }
+        
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translate(-50%, -50%) translateY(0);
+            }
+            40% {
+                transform: translate(-50%, -50%) translateY(-10px);
+            }
+            60% {
+                transform: translate(-50%, -50%) translateY(-5px);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
         }
         
         /* Responsive design */
@@ -355,6 +455,15 @@
             
             .mc-option {
                 padding: 10px 12px;
+            }
+
+            .loading-content {
+                padding: 1rem;
+                max-width: 300px;
+            }
+
+            .loading h2 {
+                font-size: 1.5rem;
             }
         }
     </style>
