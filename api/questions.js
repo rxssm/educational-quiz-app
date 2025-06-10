@@ -1,4 +1,4 @@
-// more comment Using built-in fetch instead of axios (Node 18+ has native fetch)
+// Using built-in fetch instead of axios (Node 18+ has native fetch)
 
 // Simple in-memory rate limiting (resets on cold starts)
 const rateLimitMap = new Map();
