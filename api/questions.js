@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     
     const startTime = Date.now();
     const clientIP = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
-    let rawContent = null; // Declare here to ensure it's in scope
+    let rawContent = null;
     
     try {
         console.log(`🎓 Generating new educational quiz for IP: ${clientIP}`);
@@ -249,15 +249,15 @@ Remember: EVERY question must be completely original and never repeated!`,
 
 function parseQuestions(content) {
     try {
-        console.log('🔧 Starting question parsing...');
+        console.log('🔧 Starting improved question parsing...');
         console.log('📄 Content to parse:', content.substring(0, 1000) + '...');
         
         const questions = [];
         
-        // Split by --- separators first
+        // Split by --- separators and filter out empty blocks
         let blocks = content.split('---').filter(block => block.trim().length > 0);
         
-        console.log('📊 Using --- separators, found blocks:', blocks.length);
+        console.log('📊 Found blocks:', blocks.length);
         
         for (let i = 0; i < blocks.length; i++) {
             const block = blocks[i].trim();
@@ -266,7 +266,7 @@ function parseQuestions(content) {
                 continue;
             }
             
-            console.log(`🔍 Parsing block ${i + 1}:`, block.substring(0, 300) + '...');
+            console.log(`🔍 Parsing block ${i + 1}:`, block.substring(0, 200) + '...');
             
             const lines = block.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             
@@ -280,46 +280,52 @@ function parseQuestions(content) {
             
             let currentSection = null;
             let foundQuestionLine = false;
+            let questionLines = []; // Collect all question text lines
             
             for (let j = 0; j < lines.length; j++) {
                 const line = lines[j];
                 
-                // Question detection - more precise matching
-                if ((line.includes('**Question') || line.includes('Question')) && line.includes(':') && !foundQuestionLine) {
-                    let questionText = '';
+                // Question detection - improved logic
+                if (line.includes('**Question') && line.includes(':**') && !foundQuestionLine) {
+                    foundQuestionLine = true;
+                    currentSection = 'question';
                     
-                    // Extract everything after the question marker and subject info
+                    // Extract question text from this line if it exists after the subject
                     if (line.includes('(Subject:')) {
                         // Format: **Question 1:** (Subject: Math) What is...
-                        const afterSubject = line.split(')').slice(1).join(')').trim();
-                        questionText = afterSubject;
-                    } else {
-                        // Try different patterns
-                        const patterns = [
-                            /\*\*Question\s+\d+:\*\*\s*(.+)$/,
-                            /Question\s+\d+:\s*(.+)$/,
-                            /\*\*Question\s+\d+\*\*:\s*(.+)$/
-                        ];
-                        
-                        for (const pattern of patterns) {
-                            const match = line.match(pattern);
-                            if (match) {
-                                questionText = match[1].trim();
-                                break;
+                        const parts = line.split(')');
+                        if (parts.length > 1) {
+                            const afterSubject = parts.slice(1).join(')').trim();
+                            if (afterSubject) {
+                                questionLines.push(afterSubject);
                             }
                         }
+                    } else {
+                        // Try to extract question text directly
+                        const questionMatch = line.match(/\*\*Question\s+\d+:\*\*\s*(.+)$/);
+                        if (questionMatch && questionMatch[1].trim()) {
+                            questionLines.push(questionMatch[1].trim());
+                        }
                     }
-                    
-                    if (questionText) {
-                        question.content = questionText;
-                        foundQuestionLine = true;
-                        console.log(`  ✅ Found question: ${questionText.substring(0, 50)}...`);
-                    }
-                    currentSection = 'question';
+                    console.log(`  ✅ Found question header, current text: "${questionLines.join(' ')}"`)
                 }
                 
-                // Multi-choice detection - strict pattern matching
+                // Collect question text lines (between question header and first choice)
+                else if (currentSection === 'question' && !line.match(/^[a-e]\)\s+/) && 
+                         !line.includes('**Correct Answer') && !line.includes('**Explanation') && 
+                         !line.includes('**Fun Fact') && foundQuestionLine) {
+                    questionLines.push(line);
+                    console.log(`  📝 Added question line: "${line}"`);
+                }
+                
+                // Multiple choice detection
                 else if (/^[a-e]\)\s+/.test(line) && foundQuestionLine) {
+                    // Finalize question text when we hit first choice
+                    if (currentSection === 'question' && questionLines.length > 0) {
+                        question.content = questionLines.join(' ').trim();
+                        console.log(`  ✅ Finalized question: "${question.content.substring(0, 50)}..."`);
+                    }
+                    
                     const choice = line.replace(/^[a-e]\)\s+/, '').trim();
                     if (choice && !choice.includes('**Question')) {
                         question.choices.push(choice);
@@ -365,10 +371,9 @@ function parseQuestions(content) {
                 }
                 
                 // Continue previous section if it's a continuation line
-                else if (line.length > 0 && currentSection && !line.includes('**') && !line.includes('Question')) {
-                    if (currentSection === 'question' && question.content && !foundQuestionLine) {
-                        question.content += ' ' + line;
-                    } else if (currentSection === 'explanation' && question.explanation) {
+                else if (line.length > 0 && currentSection && !line.includes('**') && 
+                         !line.includes('Question') && !line.match(/^[a-e]\)\s+/)) {
+                    if (currentSection === 'explanation' && question.explanation) {
                         question.explanation += ' ' + line;
                     } else if (currentSection === 'funfact' && question.funFact) {
                         question.funFact += ' ' + line;
@@ -376,14 +381,20 @@ function parseQuestions(content) {
                 }
             }
             
-            // Validate question - require at least 4 choices, but don't pad to 5
+            // If we collected question lines but didn't finalize yet, do it now
+            if (questionLines.length > 0 && !question.content) {
+                question.content = questionLines.join(' ').trim();
+                console.log(`  ✅ Final question text: "${question.content.substring(0, 50)}..."`);
+            }
+            
+            // Validate question
             const isValid = question.content && 
                            question.choices.length >= 4 && 
                            question.correctAnswer &&
                            ['a', 'b', 'c', 'd', 'e'].includes(question.correctAnswer);
             
             if (isValid) {
-                // Ensure we have exactly 5 choices for consistency with frontend
+                // Ensure we have exactly 5 choices for consistency
                 while (question.choices.length < 5) {
                     question.choices.push('Not applicable');
                 }
@@ -397,21 +408,17 @@ function parseQuestions(content) {
             } else {
                 console.log(`  ❌ Skipped incomplete question:`, {
                     hasContent: !!question.content,
+                    contentLength: question.content ? question.content.length : 0,
                     choicesCount: question.choices.length,
                     hasAnswer: !!question.correctAnswer,
-                    content: question.content?.substring(0, 50),
-                    choices: question.choices.slice(0, 2)
+                    questionLines: questionLines.length,
+                    content: question.content?.substring(0, 100) || 'NO CONTENT',
+                    choices: question.choices.slice(0, 3)
                 });
             }
         }
         
         console.log(`🎯 Parsing complete: ${questions.length} valid questions out of ${blocks.length} blocks`);
-        
-        // If we got fewer than expected, log the raw content for debugging
-        if (questions.length < 5) {
-            console.log('⚠️ Low question count, raw content sample:');
-            console.log(content.substring(0, 2000));
-        }
         
         return questions;
         
