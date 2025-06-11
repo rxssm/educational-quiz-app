@@ -1,6 +1,7 @@
 let currentQuestions = [];
 let userAnswers = {};
 let quizCompleted = false;
+let lastQuizSource = null; // Track if questions came from API or fallback
 
 // Loading tips for kids
 let loadingTips = [
@@ -38,6 +39,7 @@ async function generateQuestions() {
         currentQuestions = [];
         userAnswers = {};
         quizCompleted = false;
+        lastQuizSource = null;
         
         // Show enhanced loading screen
         const questionsContainer = document.getElementById('questions');
@@ -73,30 +75,44 @@ async function generateQuestions() {
         
         const response = await fetch('/api/questions');
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.error('Server error:', errorData);
-            throw new Error(errorData.error || 'Failed to fetch questions');
+            throw new Error(errorData.error || `Server error: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Received questions:', data);
+        console.log('Received response:', data);
         
-        if (!Array.isArray(data)) {
-            console.error('Data is not an array:', data);
-            throw new Error('Invalid data format received from server');
+        // Handle both old format (array) and new format (object with questions/metadata)
+        let questions;
+        let metadata = null;
+        
+        if (Array.isArray(data)) {
+            // Old format - direct array of questions
+            questions = data;
+            console.log('Using legacy response format');
+        } else if (data && data.questions && Array.isArray(data.questions)) {
+            // New format - object with questions and metadata
+            questions = data.questions;
+            metadata = data.metadata;
+            lastQuizSource = metadata?.source || 'unknown';
+            console.log('Using new response format, source:', lastQuizSource);
+        } else {
+            console.error('Invalid response format:', data);
+            throw new Error('Invalid response format from server');
         }
         
-        if (data.length === 0) {
-            console.error('Empty array received');
+        if (!questions || questions.length === 0) {
+            console.error('No questions in response');
             throw new Error('No questions received from server');
         }
         
-        currentQuestions = data;
+        currentQuestions = questions;
         
         // Stop cycling tips
         clearInterval(tipInterval);
         
-        displayQuestions(currentQuestions);
+        displayQuestions(currentQuestions, metadata);
         
     } catch (error) {
         console.error('Error:', error.message);
@@ -105,17 +121,26 @@ async function generateQuestions() {
             <div class="loading">
                 <div class="loading-content">
                     <h2>😅 Oops! Something went wrong</h2>
-                    <p>We're having trouble creating your quiz right now. Please try refreshing the page!</p>
+                    <p>We're having trouble creating your quiz right now. This might be due to:</p>
+                    <ul style="text-align: left; max-width: 300px; margin: 1rem auto;">
+                        <li>Slow AI service response</li>
+                        <li>Temporary network issues</li>
+                        <li>High server demand</li>
+                    </ul>
+                    <p>Don't worry - please try again!</p>
                     <button onclick="generateQuestions()" style="padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 1rem;">
                         🔄 Try Again
                     </button>
+                    <p style="font-size: 0.9rem; margin-top: 1rem; opacity: 0.8;">
+                        Error: ${error.message}
+                    </p>
                 </div>
             </div>
         `;
     }
 }
 
-function displayQuestions(questions) {
+function displayQuestions(questions, metadata) {
     const questionsContainer = document.getElementById('questions');
     
     if (!questions || questions.length === 0) {
@@ -123,7 +148,21 @@ function displayQuestions(questions) {
         return;
     }
     
-    let htmlContent = '<h2>4th Grade Educational Quiz</h2>';
+    let htmlContent = '';
+    
+    // Add source indicator if available
+    if (metadata) {
+        const sourceInfo = getSourceInfo(metadata.source);
+        htmlContent += `
+            <div class="quiz-info">
+                <div class="source-indicator ${metadata.source}">
+                    ${sourceInfo.icon} ${sourceInfo.text}
+                </div>
+            </div>
+        `;
+    }
+    
+    htmlContent += '<h2>4th Grade Educational Quiz</h2>';
     
     questions.forEach((question, questionIndex) => {
         if (question.content && question.choices && question.choices.length > 0) {
@@ -164,6 +203,26 @@ function displayQuestions(questions) {
     `;
     
     questionsContainer.innerHTML = htmlContent;
+}
+
+function getSourceInfo(source) {
+    switch (source) {
+        case 'api':
+            return {
+                icon: '🤖',
+                text: 'Fresh AI-generated questions'
+            };
+        case 'fallback':
+            return {
+                icon: '📚',
+                text: 'Pre-selected educational questions'
+            };
+        default:
+            return {
+                icon: '❓',
+                text: 'Educational questions'
+            };
+    }
 }
 
 function selectAnswer(questionIndex, choice) {
@@ -301,6 +360,11 @@ function showResults(correct, answered, total) {
                 ${unanswered > 0 ? `<div class="score-item unanswered-score">Unanswered: ${unanswered}</div>` : ''}
             </div>
             <div class="percentage-score">Score: ${percentage}%</div>
+            ${lastQuizSource === 'fallback' ? `
+                <div class="quiz-note">
+                    <small>📚 This quiz used pre-selected questions due to high AI demand. Try again for fresh questions!</small>
+                </div>
+            ` : ''}
         </div>
     `;
     
