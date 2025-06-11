@@ -3,6 +3,80 @@
 // Simple in-memory rate limiting (resets on cold starts)
 const rateLimitMap = new Map();
 
+// Fallback questions for when API is slow or fails
+const FALLBACK_QUESTIONS = [
+    {
+        content: "What tool would scientists use to look at very tiny things like bacteria?",
+        choices: ["Telescope", "Microscope", "Magnifying glass", "Binoculars", "Camera"],
+        correctAnswer: "b",
+        explanation: "A microscope magnifies tiny objects so we can see details that are invisible to the naked eye.",
+        funFact: "The most powerful microscopes can magnify objects up to 2 million times!"
+    },
+    {
+        content: "If you have 24 stickers and want to share them equally among 6 friends, how many stickers will each friend get?",
+        choices: ["3 stickers", "4 stickers", "5 stickers", "6 stickers", "8 stickers"],
+        correctAnswer: "b",
+        explanation: "24 divided by 6 equals 4, so each friend gets 4 stickers.",
+        funFact: "Division is just repeated subtraction - you could subtract 6 from 24 four times to get the same answer!"
+    },
+    {
+        content: "Which of these is the largest ocean on Earth?",
+        choices: ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean", "Southern Ocean"],
+        correctAnswer: "d",
+        explanation: "The Pacific Ocean covers about one-third of Earth's surface and is larger than all the land on Earth combined!",
+        funFact: "The Pacific Ocean is so big that all the continents could fit inside it with room to spare!"
+    },
+    {
+        content: "Who was the first person to walk on the moon?",
+        choices: ["Buzz Aldrin", "Neil Armstrong", "John Glenn", "Alan Shepard", "Michael Collins"],
+        correctAnswer: "b",
+        explanation: "Neil Armstrong was the commander of Apollo 11 and the first human to step foot on the moon on July 20, 1969.",
+        funFact: "Neil Armstrong's famous words were: 'That's one small step for man, one giant leap for mankind!'"
+    },
+    {
+        content: "What do we call a group of people who make laws for a country or state?",
+        choices: ["Army", "Legislature", "Police force", "Fire department", "Hospital staff"],
+        correctAnswer: "b",
+        explanation: "A legislature is a group of elected people who create, discuss, and vote on laws.",
+        funFact: "The word 'legislature' comes from Latin words meaning 'to propose laws'!"
+    },
+    {
+        content: "In the story 'The Three Little Pigs,' what material made the strongest house?",
+        choices: ["Straw", "Sticks", "Bricks", "Paper", "Leaves"],
+        correctAnswer: "c",
+        explanation: "The brick house was strong enough to protect the pig from the big bad wolf who couldn't blow it down.",
+        funFact: "This story teaches us about the importance of hard work and planning ahead!"
+    },
+    {
+        content: "Which food group do apples, oranges, and bananas belong to?",
+        choices: ["Vegetables", "Grains", "Proteins", "Fruits", "Dairy"],
+        correctAnswer: "d",
+        explanation: "Apples, oranges, and bananas are all fruits that grow on trees and plants.",
+        funFact: "Eating different colored fruits gives your body different vitamins and nutrients!"
+    },
+    {
+        content: "What colors do you mix together to make green paint?",
+        choices: ["Red and white", "Blue and yellow", "Red and blue", "Yellow and red", "Black and white"],
+        correctAnswer: "b",
+        explanation: "Blue and yellow are primary colors that combine to create the secondary color green.",
+        funFact: "Artists call red, blue, and yellow the 'primary colors' because you can't make them by mixing other colors!"
+    },
+    {
+        content: "What should you do first if you see a fire in your home?",
+        choices: ["Hide under a bed", "Get out safely and call 911", "Try to put it out yourself", "Open all the windows", "Take pictures"],
+        correctAnswer: "b",
+        explanation: "Safety first! Get out of the house quickly and call 911 for help from trained firefighters.",
+        funFact: "Fire trucks are red because red is easy to see and means 'emergency' or 'danger'!"
+    },
+    {
+        content: "How many days are in a leap year?",
+        choices: ["365 days", "366 days", "364 days", "367 days", "360 days"],
+        correctAnswer: "b",
+        explanation: "A leap year has 366 days instead of the usual 365 days, with the extra day added to February.",
+        funFact: "Leap years happen every 4 years to keep our calendar in sync with Earth's orbit around the sun!"
+    }
+];
+
 function checkRateLimit(ip) {
     const now = Date.now();
     const windowMs = 5 * 60 * 1000; // 5 minutes
@@ -42,6 +116,7 @@ export default async function handler(req, res) {
     const startTime = Date.now();
     const clientIP = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
     let rawContent = null;
+    let usedFallback = false;
     
     try {
         console.log(`🎓 Generating new educational quiz for IP: ${clientIP}`);
@@ -67,19 +142,27 @@ export default async function handler(req, res) {
 
         console.log('📡 Making request to DeepSeek API...');
         
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: "You are a helpful assistant that generates quiz questions." },
-                    {
-                        role: 'user',
-                        content: `Generate exactly 10 educational questions for a 4th grade student (9 years old) covering multiple subjects. Include questions from at least 6 of these subjects: **science, math, social studies, geography, history, literature/reading, health/safety, arts, nature/environment, and basic life skills**.
+        let questions = [];
+        
+        try {
+            // Add timeout to prevent Vercel timeout issues
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+            
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`,
+                },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'system', content: "You are a helpful assistant that generates quiz questions." },
+                        {
+                            role: 'user',
+                            content: `Generate exactly 10 educational questions for a 4th grade student (9 years old) covering multiple subjects. Include questions from at least 6 of these subjects: **science, math, social studies, geography, history, literature/reading, health/safety, arts, nature/environment, and basic life skills**.
 
 CRITICAL: This request has unique ID: ${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)} and timestamp: ${new Date().toISOString()}. Create COMPLETELY NEW and UNIQUE questions that have NEVER been generated before. Each question must be totally different from any previous quiz.
 
@@ -137,81 +220,85 @@ Continue this exact format for all 10 questions. Make sure questions are:
 - ABSOLUTELY UNIQUE and different from any previous quiz
 
 Remember: EVERY question must be completely original and never repeated!`,
-                    },
-                ],
-            })
-        });
-
-        console.log('✅ Received response from DeepSeek API');
-        console.log('📊 Response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ API Error:', response.status, errorText);
-            return res.status(500).json({ 
-                error: 'API request failed',
-                details: `Status: ${response.status}, ${errorText}`
+                        },
+                    ],
+                })
             });
+
+            // Clear the timeout since we got a response
+            clearTimeout(timeoutId);
+
+            console.log('✅ Received response from DeepSeek API');
+            console.log('📊 Response status:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data || !data.choices || !data.choices[0]) {
+                throw new Error('Invalid API response structure');
+            }
+
+            rawContent = data.choices[0].message?.content;
+            
+            if (!rawContent) {
+                throw new Error('No content in API response');
+            }
+
+            console.log('📝 Raw content length:', rawContent.length);
+            
+            questions = parseQuestions(rawContent);
+            
+            // Validate we got enough valid questions
+            const validQuestions = questions.filter(q => 
+                q.content && q.choices && q.choices.length >= 5 && q.correctAnswer
+            );
+            
+            if (validQuestions.length < 5) {
+                throw new Error(`Only got ${validQuestions.length} valid questions, need at least 5`);
+            }
+            
+            questions = validQuestions;
+            
+        } catch (apiError) {
+            console.error('❌ API Error occurred:', apiError.message);
+            console.log('🔄 Falling back to pre-generated questions...');
+            
+            // Use fallback questions with some randomization
+            questions = [...FALLBACK_QUESTIONS].sort(() => Math.random() - 0.5);
+            usedFallback = true;
         }
-
-        const data = await response.json();
-
-        console.log('📊 Full API response structure:', JSON.stringify(data, null, 2));
-
-        if (!data || !data.choices || !data.choices[0]) {
-            console.error('❌ Invalid API response structure:', data);
-            return res.status(500).json({ 
-                error: 'Invalid response from AI service',
-                details: 'The AI service returned an unexpected response format'
-            });
-        }
-
-        console.log('📊 Message object:', JSON.stringify(data.choices[0].message, null, 2));
-        rawContent = data.choices[0].message?.content;
-        
-        console.log('📝 Raw content extracted:', rawContent ? `${rawContent.length} characters` : 'NULL/UNDEFINED');
-        console.log('📝 Raw content preview:', rawContent ? rawContent.substring(0, 200) + '...' : 'NO CONTENT');
-
-        if (!rawContent) {
-            console.error('❌ No content in API response');
-            return res.status(500).json({ 
-                error: 'Empty response from AI service',
-                details: 'The AI service did not return any content'
-            });
-        }
-
-        console.log('📝 Raw content length:', rawContent.length);
-        
-        const questions = parseQuestions(rawContent);
         
         const endTime = Date.now();
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         
         console.log(`✅ Successfully generated ${questions.length} questions in ${duration}s for IP: ${clientIP}`);
+        if (usedFallback) {
+            console.log('📋 Used fallback questions due to API issues');
+        }
         
         if (!questions || questions.length === 0) {
-            console.error('❌ No questions parsed from response');
+            console.error('❌ No questions available');
             return res.status(500).json({ 
-                error: 'Failed to parse questions',
-                details: 'Could not extract valid questions from AI response',
-                rawContentPreview: rawContent ? rawContent.substring(0, 500) : 'No content available'
+                error: 'Failed to generate questions',
+                details: 'Could not get valid questions from either API or fallback'
             });
         }
         
-        const validQuestions = questions.filter(q => 
-            q.content && q.choices && q.choices.length >= 5 && q.correctAnswer
-        );
+        // Add metadata to response
+        const response_data = {
+            questions: questions,
+            metadata: {
+                source: usedFallback ? 'fallback' : 'api',
+                generated_at: new Date().toISOString(),
+                duration_seconds: duration
+            }
+        };
         
-        if (validQuestions.length === 0) {
-            console.error('❌ No valid questions after filtering');
-            return res.status(500).json({ 
-                error: 'No valid questions generated',
-                details: 'All generated questions were incomplete or invalid'
-            });
-        }
-        
-        console.log(`📋 Sending ${validQuestions.length} valid questions`);
-        res.status(200).json(validQuestions);
+        console.log(`📋 Sending ${questions.length} questions (source: ${usedFallback ? 'fallback' : 'api'})`);
+        res.status(200).json(response_data);
         
     } catch (error) {
         const endTime = Date.now();
@@ -225,7 +312,7 @@ Remember: EVERY question must be completely original and never repeated!`,
             console.error('API Error Status:', error.status);
         }
         
-        if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED') {
+        if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED' || error.name === 'AbortError') {
             return res.status(504).json({ 
                 error: 'Request timeout - please try again',
                 details: 'The AI service took too long to respond'
