@@ -119,10 +119,10 @@ async function generateQuestions() {
         // Start cycling tips
         const tipInterval = startTipCycling();
         
-        // Hide refresh button
-        const refreshButton = document.getElementById('refresh-button');
-        if (refreshButton) {
-            refreshButton.style.display = 'none';
+        // Hide button container
+        const buttonContainer = document.getElementById('button-container');
+        if (buttonContainer) {
+            buttonContainer.style.display = 'none';
         }
         
         // Prepare API request with configuration
@@ -418,13 +418,9 @@ function gradeQuiz() {
     // Stop timer
     stopTimer();
     
-    const refreshButton = document.getElementById('refresh-button');
-    const configButton = document.getElementById('config-button');
-    if (refreshButton) {
-        refreshButton.style.display = 'inline-block';
-    }
-    if (configButton) {
-        configButton.style.display = 'inline-block';
+    const buttonContainer = document.getElementById('button-container');
+    if (buttonContainer) {
+        buttonContainer.style.display = 'block';
     }
 }
 
@@ -458,12 +454,18 @@ function showResults(correct, answered, total) {
 }
 
 function addRefreshButton() {
+    // Create a container div for center alignment
+    const buttonContainer = document.createElement('div');
+    buttonContainer.id = 'button-container';
+    buttonContainer.style.textAlign = 'center';
+    buttonContainer.style.marginTop = '20px';
+    buttonContainer.style.display = 'none';
+    
     const refreshButton = document.createElement('button');
     refreshButton.id = 'refresh-button';
     refreshButton.textContent = 'Generate New Questions';
     refreshButton.onclick = generateQuestions;
     refreshButton.className = 'refresh-button';
-    refreshButton.style.display = 'none';
     
     // Add return to config button
     const configButton = document.createElement('button');
@@ -471,11 +473,11 @@ function addRefreshButton() {
     configButton.textContent = 'New Quiz Configuration';
     configButton.onclick = returnToConfig;
     configButton.className = 'refresh-button';
-    configButton.style.display = 'none';
     configButton.style.marginLeft = '10px';
     
-    document.body.appendChild(refreshButton);
-    document.body.appendChild(configButton);
+    buttonContainer.appendChild(refreshButton);
+    buttonContainer.appendChild(configButton);
+    document.body.appendChild(buttonContainer);
 }
 
 // Configuration form handling
@@ -621,10 +623,10 @@ function returnToConfig() {
     // Clear questions container
     document.getElementById('questions').innerHTML = '';
     
-    // Hide refresh button
-    const refreshButton = document.getElementById('refresh-button');
-    if (refreshButton) {
-        refreshButton.style.display = 'none';
+    // Hide button container
+    const buttonContainer = document.getElementById('button-container');
+    if (buttonContainer) {
+        buttonContainer.style.display = 'none';
     }
 }
 
