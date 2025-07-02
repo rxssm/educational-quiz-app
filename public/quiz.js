@@ -1,19 +1,69 @@
+// Quiz state variables
 let currentQuestions = [];
 let userAnswers = {};
 let quizCompleted = false;
 let lastQuizSource = null; // Track if questions came from API or fallback
 
-// Loading tips for kids
-let loadingTips = [
-    "Get ready to learn something amazing!",
-    "Did you know? Learning new things grows your brain! 🧠",
-    "Every question is a chance to discover something cool! 🌟",
-    "You're about to become smarter in just a few minutes! 💪",
-    "These questions were made just for 4th graders like you! 🎒",
-    "Learning is like a superpower - you're about to use yours! ⚡",
-    "Fun facts are coming your way! 🎯",
-    "Get your thinking cap on! 🎩"
-];
+// Quiz configuration variables
+let quizConfig = {
+    gradeLevel: '4',
+    questionCount: 10,
+    timer: 'off',
+    subjects: []
+};
+
+// Timer variables
+let timerInterval = null;
+let timeRemaining = 0; // in seconds
+let timerStarted = false;
+
+// Loading tips for kids (dynamic based on grade level)
+function getLoadingTips(gradeLevel) {
+    const baseGrade = parseInt(gradeLevel) || 4;
+    if (gradeLevel === 'college') {
+        return [
+            "Preparing advanced questions for your level!",
+            "Get ready to tackle some challenging concepts! 🎓",
+            "Time to put your knowledge to the test! 💪",
+            "These questions will challenge your understanding! 🧠",
+            "Ready for some college-level thinking? 📚",
+            "Let's see what you've learned! ⚡",
+            "Advanced knowledge coming your way! 🎯"
+        ];
+    } else if (baseGrade <= 3) {
+        return [
+            "Get ready for some fun learning! 🌟",
+            "Time to show what you know! 😊",
+            "Learning is like playing - let's have fun! 🎈",
+            "You're going to do great! 💪",
+            "Every question is a new adventure! 🚀",
+            "Get your thinking cap on! 🎩",
+            "Fun facts are coming your way! 🎯"
+        ];
+    } else if (baseGrade <= 6) {
+        return [
+            "Get ready to learn something amazing!",
+            "Did you know? Learning new things grows your brain! 🧠",
+            "Every question is a chance to discover something cool! 🌟",
+            "You're about to become smarter in just a few minutes! 💪",
+            "Learning is like a superpower - you're about to use yours! ⚡",
+            "Fun facts are coming your way! 🎯",
+            "Get your thinking cap on! 🎩"
+        ];
+    } else {
+        return [
+            "Ready to tackle some challenging questions! 🎯",
+            "Time to demonstrate your knowledge! 🧠",
+            "Get ready for some thought-provoking questions! 💭",
+            "Let's see how much you've learned! 📚",
+            "Challenge yourself with these questions! 💪",
+            "Knowledge is power - let's use it! ⚡",
+            "Advanced thinking mode activated! 🚀"
+        ];
+    }
+}
+
+let loadingTips = getLoadingTips('4');
 let tipIndex = 0;
 
 function cycleTips() {
@@ -43,6 +93,8 @@ async function generateQuestions() {
         
         // Show enhanced loading screen
         const questionsContainer = document.getElementById('questions');
+        const gradeText = quizConfig.gradeLevel === 'college' ? 'College Level' : `Grade ${quizConfig.gradeLevel}`;
+        const subjectText = quizConfig.subjects.length > 1 ? `${quizConfig.subjects.length} subjects` : quizConfig.subjects[0] || 'mixed subjects';
         questionsContainer.innerHTML = `
             <div id="loading" class="loading">
                 <div class="loading-content">
@@ -50,8 +102,8 @@ async function generateQuestions() {
                         <div class="spinner"></div>
                         <div class="loading-books">📚✨📖</div>
                     </div>
-                    <h2>🧠 Preparing Your Quiz! 🎓</h2>
-                    <p class="loading-message">Our AI teacher is creating brand new questions just for you...</p>
+                    <h2>🧠 Preparing Your ${gradeText} Quiz! 🎓</h2>
+                    <p class="loading-message">Creating ${quizConfig.questionCount} questions about ${subjectText}...</p>
                     <div class="loading-dots">
                         <span>.</span>
                         <span>.</span>
@@ -73,7 +125,22 @@ async function generateQuestions() {
             refreshButton.style.display = 'none';
         }
         
-        const response = await fetch('/api/questions');
+        // Prepare API request with configuration
+        const requestBody = {
+            gradeLevel: quizConfig.gradeLevel,
+            questionCount: quizConfig.questionCount,
+            subjects: quizConfig.subjects
+        };
+        
+        console.log('Sending request with config:', requestBody);
+        
+        const response = await fetch('/api/questions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.error('Server error:', errorData);
@@ -162,7 +229,8 @@ function displayQuestions(questions, metadata) {
         `;
     }
     
-    htmlContent += '<h2>4th Grade Educational Quiz</h2>';
+    const gradeText = quizConfig.gradeLevel === 'college' ? 'College Level' : `Grade ${quizConfig.gradeLevel}`;
+    htmlContent += `<h2>${gradeText} Educational Quiz</h2>`;
     
     questions.forEach((question, questionIndex) => {
         if (question.content && question.choices && question.choices.length > 0) {
@@ -337,13 +405,20 @@ function gradeQuiz() {
     // Show results
     showResults(correctCount, totalAnswered, currentQuestions.length);
     
-    // Hide submit button and show refresh button
+    // Hide submit button and show refresh/config buttons
     const submitButton = document.getElementById('submit-quiz');
     submitButton.style.display = 'none';
     
+    // Stop timer
+    stopTimer();
+    
     const refreshButton = document.getElementById('refresh-button');
+    const configButton = document.getElementById('config-button');
     if (refreshButton) {
-        refreshButton.style.display = 'block';
+        refreshButton.style.display = 'inline-block';
+    }
+    if (configButton) {
+        configButton.style.display = 'inline-block';
     }
 }
 
@@ -384,11 +459,171 @@ function addRefreshButton() {
     refreshButton.className = 'refresh-button';
     refreshButton.style.display = 'none';
     
+    // Add return to config button
+    const configButton = document.createElement('button');
+    configButton.id = 'config-button';
+    configButton.textContent = 'New Quiz Configuration';
+    configButton.onclick = returnToConfig;
+    configButton.className = 'refresh-button';
+    configButton.style.display = 'none';
+    configButton.style.marginLeft = '10px';
+    
     document.body.appendChild(refreshButton);
+    document.body.appendChild(configButton);
+}
+
+// Configuration form handling
+function setupConfigurationForm() {
+    const form = document.getElementById('quiz-config-form');
+    const subjectCheckboxes = document.querySelectorAll('input[name="subjects"]');
+    const subjectError = document.getElementById('subject-error');
+    
+    // Subject selection validation
+    subjectCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const checkedSubjects = document.querySelectorAll('input[name="subjects"]:checked');
+            const checkedCount = checkedSubjects.length;
+            
+            if (checkedCount > 5) {
+                this.checked = false;
+                subjectError.textContent = 'You can select a maximum of 5 subjects.';
+                subjectError.style.display = 'block';
+                return;
+            }
+            
+            if (checkedCount === 0) {
+                subjectError.textContent = 'Please select at least 1 subject.';
+                subjectError.style.display = 'block';
+            } else {
+                subjectError.style.display = 'none';
+            }
+        });
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate subjects
+        const checkedSubjects = document.querySelectorAll('input[name="subjects"]:checked');
+        if (checkedSubjects.length === 0) {
+            subjectError.textContent = 'Please select at least 1 subject.';
+            subjectError.style.display = 'block';
+            return;
+        }
+        if (checkedSubjects.length > 5) {
+            subjectError.textContent = 'Please select no more than 5 subjects.';
+            subjectError.style.display = 'block';
+            return;
+        }
+        
+        // Collect configuration
+        const formData = new FormData(form);
+        quizConfig = {
+            gradeLevel: formData.get('grade-level') || document.getElementById('grade-level').value,
+            questionCount: parseInt(formData.get('question-count')) || 10,
+            timer: formData.get('timer') || 'off',
+            subjects: Array.from(checkedSubjects).map(cb => cb.value)
+        };
+        
+        console.log('Quiz configuration:', quizConfig);
+        
+        // Update loading tips based on grade level
+        loadingTips = getLoadingTips(quizConfig.gradeLevel);
+        
+        // Hide configuration and start quiz
+        document.getElementById('config-container').style.display = 'none';
+        document.getElementById('questions').style.display = 'block';
+        
+        // Start timer if enabled
+        if (quizConfig.timer !== 'off') {
+            setupTimer(parseInt(quizConfig.timer));
+        }
+        
+        // Generate questions with configuration
+        generateQuestions();
+    });
+}
+
+// Timer functionality
+function setupTimer(minutes) {
+    timeRemaining = minutes * 60; // Convert to seconds
+    const timerContainer = document.getElementById('timer-container');
+    const timerDisplay = document.getElementById('timer-display');
+    
+    timerContainer.style.display = 'block';
+    updateTimerDisplay();
+    
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
+        
+        // Warning states
+        if (timeRemaining <= 60) { // Last minute
+            timerContainer.classList.add('critical');
+            timerContainer.classList.remove('warning');
+        } else if (timeRemaining <= 300) { // Last 5 minutes
+            timerContainer.classList.add('warning');
+        }
+        
+        // Time's up!
+        if (timeRemaining <= 0) {
+            timeUp();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+    const timerDisplay = document.getElementById('timer-display');
+    timerDisplay.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function timeUp() {
+    clearInterval(timerInterval);
+    if (!quizCompleted) {
+        alert('⏰ Time\'s up! Your quiz will be submitted automatically.');
+        submitQuiz();
+    }
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    const timerContainer = document.getElementById('timer-container');
+    timerContainer.style.display = 'none';
+}
+
+// Return to configuration
+function returnToConfig() {
+    // Reset quiz state
+    currentQuestions = [];
+    userAnswers = {};
+    quizCompleted = false;
+    lastQuizSource = null;
+    
+    // Stop timer
+    stopTimer();
+    
+    // Show configuration, hide questions
+    document.getElementById('config-container').style.display = 'block';
+    document.getElementById('questions').style.display = 'none';
+    
+    // Clear questions container
+    document.getElementById('questions').innerHTML = '';
+    
+    // Hide refresh button
+    const refreshButton = document.getElementById('refresh-button');
+    if (refreshButton) {
+        refreshButton.style.display = 'none';
+    }
 }
 
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
-    generateQuestions();
+    setupConfigurationForm();
     addRefreshButton();
 });
