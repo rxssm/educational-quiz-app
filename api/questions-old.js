@@ -101,81 +101,6 @@ function checkRateLimit(ip) {
     return true;
 }
 
-function generatePrompt(config) {
-    const gradeText = config.gradeLevel === 'college' ? 'college level' : `${config.gradeLevel}th grade`;
-    const ageText = config.gradeLevel === 'college' ? 'college students' : 
-                   config.gradeLevel <= 3 ? `${parseInt(config.gradeLevel) + 5} years old` :
-                   `${parseInt(config.gradeLevel) + 5} years old`;
-    
-    // Subject mapping for prompts
-    const subjectMap = {
-        'mathematics': 'Math',
-        'science': 'Science',
-        'history': 'History',
-        'geography': 'Geography',
-        'literature': 'Literature/Reading',
-        'civics': 'Social Studies/Civics',
-        'health': 'Health/Safety',
-        'art': 'Arts',
-        'music': 'Music',
-        'physical-education': 'Physical Education',
-        'computer-science': 'Computer Science',
-        'economics': 'Economics',
-        'psychology': 'Psychology',
-        'chemistry': 'Chemistry',
-        'physics': 'Physics'
-    };
-    
-    let subjectInstruction;
-    if (config.subjects.length > 0) {
-        const mappedSubjects = config.subjects.map(s => subjectMap[s] || s).join(', ');
-        subjectInstruction = `Focus specifically on these subjects: ${mappedSubjects}. Include questions from at least ${Math.min(config.subjects.length, Math.floor(config.questionCount / 2))} of these subjects.`;
-    } else {
-        subjectInstruction = 'Include questions from at least 6 of these subjects: **science, math, social studies, geography, history, literature/reading, health/safety, arts, nature/environment, and basic life skills**.';
-    }
-    
-    // Difficulty adjustment based on grade level
-    let difficultyInstruction;
-    if (config.gradeLevel === 'college') {
-        difficultyInstruction = 'DIFFICULTY: College level - include advanced concepts, critical thinking, analysis, and application of knowledge. Questions should challenge students with complex scenarios and require deeper understanding.';
-    } else if (parseInt(config.gradeLevel) >= 9) {
-        difficultyInstruction = 'DIFFICULTY: High school level - include analytical thinking, problem-solving, and real-world applications. Mix factual knowledge with reasoning and critical thinking skills.';
-    } else if (parseInt(config.gradeLevel) >= 6) {
-        difficultyInstruction = 'DIFFICULTY: Middle school level - balance factual recall with problem-solving and application. Include scenarios that require students to think beyond memorization.';
-    } else {
-        difficultyInstruction = 'DIFFICULTY: Elementary level - focus on foundational concepts with clear, age-appropriate language. Mix simple factual questions with basic reasoning skills.';
-    }
-    
-    return `Generate exactly ${config.questionCount} educational questions for ${gradeText} students. ${subjectInstruction}
-
-${difficultyInstruction}
-
-Format each question exactly like this with --- separators:
-
----
-
-**Question 1:** (Subject: Topic) [Question text here]
-a) [Answer choice A]
-b) [Answer choice B]
-c) [Answer choice C]
-d) [Answer choice D]
-e) [Answer choice E]
-**Correct Answer:** [letter]
-**Explanation:** [Brief explanation]
-**Fun Fact:** [Interesting related fact]
-
----
-
-Requirements:
-- Age-appropriate for ${gradeText} level
-- Clear, engaging language
-- Mix factual recall with reasoning
-- Educational and curriculum-aligned
-- Unique and varied question formats
-
-Generate all ${config.questionCount} questions now.`;
-}
-
 export default async function handler(req, res) {
     // Security headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -239,9 +164,9 @@ export default async function handler(req, res) {
         let questions = [];
         
         try {
-            // Reduced timeout for Vercel's 10-second function limit
+            // Add timeout to prevent Vercel timeout issues
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for Vercel
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
             
             const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
@@ -253,14 +178,69 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     model: 'deepseek-chat',
                     messages: [
-                        { role: 'system', content: "You are a helpful assistant that generates quiz questions quickly and efficiently." },
+                        { role: 'system', content: "You are a helpful assistant that generates quiz questions." },
                         {
                             role: 'user',
                             content: generatePrompt(config)
+
+CRITICAL: This request has unique ID: ${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)} and timestamp: ${new Date().toISOString()}. Create COMPLETELY NEW and UNIQUE questions that have NEVER been generated before. Each question must be totally different from any previous quiz.
+
+VARIATION REQUIREMENTS:
+- Use different question formats: multiple choice, scenario-based, "what if" questions, comparison questions
+- Vary difficulty within 4th grade level (some easier, some more challenging)
+- Mix factual recall with critical thinking and application questions
+- Use different contexts and real-world examples each time
+- Include questions that require students to analyze, compare, predict, or solve problems
+
+TOPIC ROTATION (pick 6-8 different subjects each time):
+- **Math**: ${['basic fractions and decimals', 'geometry shapes and angles', 'word problems with money', 'measurement and units', 'time and elapsed time', 'multiplication and division', 'area and perimeter', 'patterns and sequences'][Math.floor(Math.random() * 8)]}
+- **Science**: ${['animal adaptations', 'plant life cycles', 'weather patterns', 'solar system', 'states of matter', 'simple machines', 'ecosystems', 'human body systems'][Math.floor(Math.random() * 8)]}
+- **Geography**: ${['US states and capitals', 'world continents', 'landforms and bodies of water', 'maps and directions', 'climate zones', 'natural resources', 'famous landmarks', 'cultural regions'][Math.floor(Math.random() * 8)]}
+- **History**: ${['American Revolution', 'Native American cultures', 'explorers and discoveries', 'colonial life', 'inventors and inventions', 'Civil War era', 'westward expansion', 'early settlements'][Math.floor(Math.random() * 8)]}
+- **Social Studies**: ${['government and citizenship', 'community helpers', 'economics and money', 'cultures and traditions', 'rights and responsibilities', 'democracy and voting', 'laws and rules', 'diversity and inclusion'][Math.floor(Math.random() * 8)]}
+- **Literature**: ${['story elements and plot', 'character development', 'poetry and rhyme', 'authors and illustrators', 'genres and types', 'reading comprehension', 'main idea and details', 'cause and effect'][Math.floor(Math.random() * 8)]}
+- **Health/Safety**: ${['nutrition and food groups', 'exercise and fitness', 'personal hygiene', 'safety rules', 'first aid basics', 'mental health', 'sleep and rest', 'preventing illness'][Math.floor(Math.random() * 8)]}
+- **Arts**: ${['famous artists and paintings', 'music and instruments', 'theater and drama', 'art techniques', 'cultural arts', 'creativity and expression', 'color theory', 'art history'][Math.floor(Math.random() * 8)]}
+- **Nature**: ${['conservation and recycling', 'endangered species', 'natural disasters', 'seasons and changes', 'life cycles', 'food chains', 'habitats', 'environmental protection'][Math.floor(Math.random() * 8)]}
+- **Life Skills**: ${['time management', 'problem solving', 'communication', 'teamwork', 'goal setting', 'decision making', 'organization', 'responsibility'][Math.floor(Math.random() * 8)]}
+
+QUESTION VARIETY EXAMPLES (use different ones each time):
+- Scenario: "If you were planning a garden..."
+- Comparison: "Which is larger/smaller/faster..."
+- Application: "How would you use this knowledge to..."
+- Analysis: "What would happen if..."
+- Real-world: "In your daily life, when might you..."
+- Problem-solving: "A student needs to figure out..."
+
+Format each question exactly like this, with --- separators:
+
+---
+
+**Question 1:** (Subject: Topic) [Question text here]  
+a) [Answer choice A]  
+b) [Answer choice B]  
+c) [Answer choice C]  
+d) [Answer choice D]  
+e) [Answer choice E]  
+**Correct Answer:** [letter]  
+**Explanation:** [Brief, child-friendly explanation of why this is correct]  
+**Fun Fact:** [An interesting related fact to spark curiosity]  
+
+---
+
+Continue this exact format for all 10 questions. Make sure questions are:
+- Age-appropriate and engaging for 4th grade students
+- Educational and teach valuable concepts that align with 4th grade curriculum
+- Cover diverse topics to broaden knowledge
+- Include both factual knowledge and basic reasoning skills
+- Written in clear, simple language children can understand
+- Designed to make learning fun and memorable
+- Focus on practical knowledge that helps children understand their world
+- ABSOLUTELY UNIQUE and different from any previous quiz
+
+Remember: EVERY question must be completely original and never repeated!`,
                         },
                     ],
-                    max_tokens: 4000, // Limit response size for faster processing
-                    temperature: 0.7  // Slightly reduce creativity for faster generation
                 })
             });
 
@@ -295,28 +275,19 @@ export default async function handler(req, res) {
                 q.content && q.choices && q.choices.length >= 5 && q.correctAnswer
             );
             
-            if (validQuestions.length < Math.min(5, config.questionCount)) {
-                throw new Error(`Only got ${validQuestions.length} valid questions, need at least ${Math.min(5, config.questionCount)}`);
+            if (validQuestions.length < 5) {
+                throw new Error(`Only got ${validQuestions.length} valid questions, need at least 5`);
             }
             
-            questions = validQuestions.slice(0, config.questionCount);
+            questions = validQuestions;
             
         } catch (apiError) {
             console.error('❌ API Error occurred:', apiError.message);
             console.log('🔄 Falling back to pre-generated questions...');
             
-            // Clear timeout on error
-            if (timeoutId) clearTimeout(timeoutId);
-            
             // Use fallback questions with some randomization
-            const shuffled = [...FALLBACK_QUESTIONS].sort(() => Math.random() - 0.5);
-            questions = shuffled.slice(0, config.questionCount);
+            questions = [...FALLBACK_QUESTIONS].sort(() => Math.random() - 0.5);
             usedFallback = true;
-            
-            // Log specific timeout errors
-            if (apiError.name === 'AbortError') {
-                console.log('⏰ Request timed out after 8 seconds, using fallback questions');
-            }
         }
         
         const endTime = Date.now();
@@ -341,8 +312,7 @@ export default async function handler(req, res) {
             metadata: {
                 source: usedFallback ? 'fallback' : 'api',
                 generated_at: new Date().toISOString(),
-                duration_seconds: duration,
-                config: config
+                duration_seconds: duration
             }
         };
         
@@ -362,10 +332,9 @@ export default async function handler(req, res) {
         }
         
         if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED' || error.name === 'AbortError') {
-            console.log('⚠️ Timeout detected, should have used fallback questions');
             return res.status(504).json({ 
-                error: 'Request timeout - using fallback questions',
-                details: 'The AI service is busy, but we have backup questions ready'
+                error: 'Request timeout - please try again',
+                details: 'The AI service took too long to respond'
             });
         }
         
@@ -384,7 +353,11 @@ export default async function handler(req, res) {
     }
 }
 
-function parseQuestions(content) {
+function generatePrompt(config) {
+    const gradeText = config.gradeLevel === 'college' ? 'college level' : `${config.gradeLevel}th grade`;
+    const ageText = config.gradeLevel === 'college' ? 'college students' : 
+                   config.gradeLevel <= 3 ? `${parseInt(config.gradeLevel) + 5} years old` :
+                   `${parseInt(config.gradeLevel) + 5} years old`;\n    \n    // Subject mapping for prompts\n    const subjectMap = {\n        'mathematics': 'Math',\n        'science': 'Science',\n        'history': 'History',\n        'geography': 'Geography',\n        'literature': 'Literature/Reading',\n        'civics': 'Social Studies/Civics',\n        'health': 'Health/Safety',\n        'art': 'Arts',\n        'music': 'Music',\n        'physical-education': 'Physical Education',\n        'computer-science': 'Computer Science',\n        'economics': 'Economics',\n        'psychology': 'Psychology',\n        'chemistry': 'Chemistry',\n        'physics': 'Physics'\n    };\n    \n    let subjectInstruction;\n    if (config.subjects.length > 0) {\n        const mappedSubjects = config.subjects.map(s => subjectMap[s] || s).join(', ');\n        subjectInstruction = `Focus specifically on these subjects: ${mappedSubjects}. Include questions from at least ${Math.min(config.subjects.length, Math.floor(config.questionCount / 2))} of these subjects.`;\n    } else {\n        subjectInstruction = 'Include questions from at least 6 of these subjects: **science, math, social studies, geography, history, literature/reading, health/safety, arts, nature/environment, and basic life skills**.';\n    }\n    \n    // Difficulty adjustment based on grade level\n    let difficultyInstruction;\n    if (config.gradeLevel === 'college') {\n        difficultyInstruction = `\nDIFFICULTY: College level - include advanced concepts, critical thinking, analysis, and application of knowledge. Questions should challenge students with complex scenarios and require deeper understanding.`;\n    } else if (parseInt(config.gradeLevel) >= 9) {\n        difficultyInstruction = `\nDIFFICULTY: High school level - include analytical thinking, problem-solving, and real-world applications. Mix factual knowledge with reasoning and critical thinking skills.`;\n    } else if (parseInt(config.gradeLevel) >= 6) {\n        difficultyInstruction = `\nDIFFICULTY: Middle school level - balance factual recall with problem-solving and application. Include scenarios that require students to think beyond memorization.`;\n    } else {\n        difficultyInstruction = `\nDIFFICULTY: Elementary level - focus on foundational concepts with clear, age-appropriate language. Mix simple factual questions with basic reasoning skills.`;\n    }\n    \n    return `Generate exactly ${config.questionCount} educational questions for ${gradeText} students (${ageText}). ${subjectInstruction}\n\nCRITICAL: This request has unique ID: ${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)} and timestamp: ${new Date().toISOString()}. Create COMPLETELY NEW and UNIQUE questions that have NEVER been generated before. Each question must be totally different from any previous quiz.\n\nVARIATION REQUIREMENTS:\n- Use different question formats: multiple choice, scenario-based, \"what if\" questions, comparison questions\n- Vary difficulty within ${gradeText} level (some easier, some more challenging)\n- Mix factual recall with critical thinking and application questions\n- Use different contexts and real-world examples each time\n- Include questions that require students to analyze, compare, predict, or solve problems${difficultyInstruction}\n\nFormat each question exactly like this, with --- separators:\n\n---\n\n**Question 1:** (Subject: Topic) [Question text here]  \na) [Answer choice A]  \nb) [Answer choice B]  \nc) [Answer choice C]  \nd) [Answer choice D]  \ne) [Answer choice E]  \n**Correct Answer:** [letter]  \n**Explanation:** [Brief, age-appropriate explanation of why this is correct]  \n**Fun Fact:** [An interesting related fact to spark curiosity]  \n\n---\n\nContinue this exact format for all ${config.questionCount} questions. Make sure questions are:\n- Age-appropriate and engaging for ${gradeText} students\n- Educational and teach valuable concepts that align with ${gradeText} curriculum\n- Cover diverse topics to broaden knowledge\n- Include both factual knowledge and reasoning skills appropriate for the grade level\n- Written in clear language students can understand\n- Designed to make learning fun and memorable\n- Focus on practical knowledge that helps students understand their world\n- ABSOLUTELY UNIQUE and different from any previous quiz\n\nRemember: EVERY question must be completely original and never repeated!`;\n}\n\nfunction parseQuestions(content) {
     try {
         console.log('🔧 Starting improved question parsing...');
         console.log('📄 Content to parse:', content.substring(0, 1000) + '...');
