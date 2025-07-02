@@ -134,13 +134,18 @@ async function generateQuestions() {
         
         console.log('Sending request with config:', requestBody);
         
-        const response = await fetch('/api/questions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
+        const response = await Promise.race([
+            fetch('/api/questions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), 12000) // 12 second frontend timeout
+            )
+        ]);
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.error('Server error:', errorData);
@@ -187,14 +192,15 @@ async function generateQuestions() {
         questionsContainer.innerHTML = `
             <div class="loading">
                 <div class="loading-content">
-                    <h2>😅 Oops! Something went wrong</h2>
-                    <p>We're having trouble creating your quiz right now. This might be due to:</p>
+                    <h2>😅 Taking a bit longer than expected!</h2>
+                    <p>The AI service is currently busy, but don't worry - we have backup questions ready!</p>
+                    <p>This might be due to:</p>
                     <ul style="text-align: left; max-width: 300px; margin: 1rem auto;">
-                        <li>Slow AI service response</li>
-                        <li>Temporary network issues</li>
-                        <li>High server demand</li>
+                        <li>High demand on AI services</li>
+                        <li>Complex question generation</li>
+                        <li>Network congestion</li>
                     </ul>
-                    <p>Don't worry - please try again!</p>
+                    <p>Try again for AI-generated questions, or we'll use our curated backup questions!</p>
                     <button onclick="generateQuestions()" style="padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 1rem;">
                         🔄 Try Again
                     </button>
