@@ -143,7 +143,7 @@ async function generateQuestions() {
                 body: JSON.stringify(requestBody)
             }),
             new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Request timeout')), 12000) // 12 second frontend timeout
+                setTimeout(() => reject(new Error('Request timeout')), 50000) // 50 second frontend timeout
             )
         ]);
         if (!response.ok) {
