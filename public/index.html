@@ -466,6 +466,222 @@
         }
         
         /* Responsive design */
+        /* Configuration Screen Styles */
+        #config-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .config-panel {
+            background-color: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .config-panel h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+        }
+        
+        .config-description {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .config-section {
+            margin-bottom: 35px;
+        }
+        
+        .config-label {
+            display: block;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .subject-counter {
+            font-size: 0.9em;
+            font-weight: normal;
+            color: #7f8c8d;
+        }
+        
+        .config-select {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 1.1em;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            background-color: white;
+            color: #2c3e50;
+            transition: border-color 0.3s ease;
+        }
+        
+        .config-select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 12px 20px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .radio-option:hover {
+            border-color: #3498db;
+            background-color: #f8f9fa;
+        }
+        
+        .radio-option input[type="radio"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+        
+        .radio-option input[type="radio"]:checked + .radio-text {
+            font-weight: bold;
+            color: #2980b9;
+        }
+        
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: #2980b9;
+            background-color: #e3f2fd;
+        }
+        
+        .radio-text {
+            font-size: 1em;
+            color: #2c3e50;
+        }
+        
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .subject-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 12px 16px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .subject-option:hover {
+            border-color: #3498db;
+            background-color: #f8f9fa;
+        }
+        
+        .subject-option input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        .subject-option input[type="checkbox"]:checked + .subject-text {
+            font-weight: bold;
+            color: #2980b9;
+        }
+        
+        .subject-option:has(input[type="checkbox"]:checked) {
+            border-color: #2980b9;
+            background-color: #e3f2fd;
+        }
+        
+        .subject-text {
+            font-size: 1em;
+            color: #2c3e50;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.9em;
+            margin-top: 5px;
+            padding: 8px 12px;
+            background-color: #fdf2f2;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .config-actions {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .start-quiz-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .start-quiz-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .start-quiz-button:active {
+            transform: translateY(-1px);
+        }
+        
+        /* Timer Display Styles */
+        .timer-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            z-index: 100;
+            display: none;
+        }
+        
+        .timer-container.warning {
+            background: linear-gradient(135deg, #ff9f43, #f0932b);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        .timer-container.critical {
+            background: linear-gradient(135deg, #eb4d4b, #c0392b);
+            animation: flash 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -504,12 +720,197 @@
                 font-size: 0.8rem;
                 padding: 6px 12px;
             }
+            
+            /* Configuration responsive styles */
+            .config-panel {
+                padding: 25px;
+            }
+            
+            .config-panel h2 {
+                font-size: 1.8em;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+            }
+            
+            .subjects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .start-quiz-button {
+                padding: 15px 30px;
+                font-size: 1.1em;
+            }
+            
+            .timer-container {
+                top: 10px;
+                right: 10px;
+                padding: 10px 15px;
+                font-size: 1em;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>🎓 4th Grade Educational Quiz</h1>
-    <div id="questions"></div>
+    <h1>🎓 Educational Quiz Generator</h1>
+    
+    <!-- Timer Display (Initially Hidden) -->
+    <div id="timer-container" class="timer-container">
+        <span id="timer-display">⏱️ 5:00</span>
+    </div>
+    
+    <!-- Quiz Configuration Screen -->
+    <div id="config-container">
+        <div class="config-panel">
+            <h2>🎯 Configure Your Quiz</h2>
+            <p class="config-description">Customize your learning experience by selecting your preferences below.</p>
+            
+            <form id="quiz-config-form">
+                <!-- Grade Level Selection -->
+                <div class="config-section">
+                    <label class="config-label">📚 Grade Level</label>
+                    <select id="grade-level" class="config-select" required>
+                        <option value="">Select Grade Level</option>
+                        <option value="1">Grade 1</option>
+                        <option value="2">Grade 2</option>
+                        <option value="3">Grade 3</option>
+                        <option value="4" selected>Grade 4</option>
+                        <option value="5">Grade 5</option>
+                        <option value="6">Grade 6</option>
+                        <option value="7">Grade 7</option>
+                        <option value="8">Grade 8</option>
+                        <option value="9">Grade 9</option>
+                        <option value="10">Grade 10</option>
+                        <option value="11">Grade 11</option>
+                        <option value="12">Grade 12</option>
+                        <option value="college">College Level</option>
+                    </select>
+                </div>
+                
+                <!-- Number of Questions -->
+                <div class="config-section">
+                    <label class="config-label">🔢 Number of Questions</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="question-count" value="5">
+                            <span class="radio-text">5 Questions</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="question-count" value="10" checked>
+                            <span class="radio-text">10 Questions</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="question-count" value="15">
+                            <span class="radio-text">15 Questions</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="question-count" value="20">
+                            <span class="radio-text">20 Questions</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Timer Options -->
+                <div class="config-section">
+                    <label class="config-label">⏱️ Quiz Timer</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="timer" value="off" checked>
+                            <span class="radio-text">No Timer</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="timer" value="5">
+                            <span class="radio-text">5 Minutes</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="timer" value="10">
+                            <span class="radio-text">10 Minutes</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="timer" value="20">
+                            <span class="radio-text">20 Minutes</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Subject Selection -->
+                <div class="config-section">
+                    <label class="config-label">📖 Subjects <span class="subject-counter">(Select up to 5)</span></label>
+                    <div class="subjects-grid">
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="mathematics">
+                            <span class="subject-text">📐 Mathematics</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="science">
+                            <span class="subject-text">🔬 Science</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="history">
+                            <span class="subject-text">🏛️ History</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="geography">
+                            <span class="subject-text">🌍 Geography</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="literature">
+                            <span class="subject-text">📚 Literature</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="civics">
+                            <span class="subject-text">🏛️ Civics</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="health">
+                            <span class="subject-text">💪 Health</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="art">
+                            <span class="subject-text">🎨 Art</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="music">
+                            <span class="subject-text">🎵 Music</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="physical-education">
+                            <span class="subject-text">🏃 Physical Education</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="computer-science">
+                            <span class="subject-text">💻 Computer Science</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="economics">
+                            <span class="subject-text">💰 Economics</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="psychology">
+                            <span class="subject-text">🧠 Psychology</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="chemistry">
+                            <span class="subject-text">⚗️ Chemistry</span>
+                        </label>
+                        <label class="subject-option">
+                            <input type="checkbox" name="subjects" value="physics">
+                            <span class="subject-text">⚛️ Physics</span>
+                        </label>
+                    </div>
+                    <div id="subject-error" class="error-message" style="display: none;">Please select at least 1 subject and no more than 5 subjects.</div>
+                </div>
+                
+                <div class="config-actions">
+                    <button type="submit" class="start-quiz-button">🚀 Start Quiz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Quiz Questions Screen (Initially Hidden) -->
+    <div id="questions" style="display: none;"></div>
     <script src="quiz.js"></script>
 </body>
 </html>
