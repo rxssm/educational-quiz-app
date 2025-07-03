@@ -241,7 +241,7 @@ export default async function handler(req, res) {
         try {
             // Add timeout to prevent Vercel timeout issues
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 175000); // 175 second timeout (2min 55sec)
             
             const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
@@ -315,7 +315,7 @@ export default async function handler(req, res) {
             
             // Log specific timeout errors
             if (apiError.name === 'AbortError') {
-                console.log('⏰ Request timed out after 45 seconds, using fallback questions');
+                console.log('⏰ Request timed out after 175 seconds, using fallback questions');
             }
         }
         
