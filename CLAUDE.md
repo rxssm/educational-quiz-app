@@ -82,7 +82,7 @@ Critical global variables in `quiz.js`:
 The app features a sophisticated loading system with:
 - Animated spinner with educational icons
 - Cycling motivational tips for students
-- 45-second timeout to prevent Vercel function timeouts
+- 3-minute timeout to accommodate DeepSeek's response time
 - Graceful fallback messaging when using pre-written questions
 
 ### Error Handling Strategy
@@ -116,13 +116,13 @@ Common issues:
 - **Empty questions**: Check API key configuration and DeepSeek service status
 - **Parsing failures**: Review console logs for specific parsing error patterns
 - **Rate limiting**: Monitor request frequency and implement user-facing delays if needed
-- **Timeout issues**: The 45-second limit prevents Vercel timeouts but may need adjustment
+- **Timeout issues**: The 3-minute limit accommodates DeepSeek's response time while preventing Vercel timeouts
 
 ## Recent Development Focus
 
 Based on git history, recent improvements include:
 - Enhanced question parsing reliability for various AI response formats
 - Improved loading screen user experience with animations
-- Response caching implementation (45-second timeout)
+- Response timeout optimization (3-minute timeout)
 - Better error handling and debugging capabilities
 - Question variety and educational engagement improvements
